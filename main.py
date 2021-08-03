@@ -46,6 +46,8 @@ def main():
     for event in events:
         start = event['start'].get('dateTime', event['start'].get('date'))
         print(start, event['summary'])
-
+    
+    pd.DataFrame(events).to_csv('1.csv', sep='\t')
+    
 if __name__ == '__main__':
     main()

@@ -1,0 +1,156 @@
+
+from bs4 import BeautifulSoup as bs
+import requests
+# !pip install fake_headers
+from fake_headers import Headers
+import re
+import pandas as pd
+import numpy as np
+
+def loc(name_ratings,value_ratings, s, na, nu, q):
+    for count, i in enumerate(name_ratings):
+        if i == 'Безопасность':
+            secur.insert(len(secur), value_ratings[count])
+            s = 1
+        if i == 'Натуральность':
+            natur.insert(len(natur),value_ratings[count])
+            na = 1
+        if i == 'Пищевая ценность':
+            nutrit_value.insert(len(nutrit_value),value_ratings[count])
+            nu = 1
+        if i == 'Качество':
+            quality.insert(len(quality),value_ratings[count])
+            q = 1
+        if i == 'не указано':
+            if s == 0:
+                secur.insert(len(secur),'не указано')
+                s = 1
+            if na == 0:
+                natur.insert(len(natur),'не указано')
+                na = 1
+            if nu == 0:
+                nutrit_value.insert(len(nutrit_value),'не указано')
+                nu = 1
+            if q == 0:
+                quality.insert(len(quality),'не указано')
+                q = 1
+
+url = 'https://roscontrol.com/category/produkti/'
+response = requests.get(url, headers= Headers(headers=True).generate()).text
+soup = bs(response, 'lxml')
+
+category_list = [i.text for i in soup.findAll(attrs={'class': 'grid-padding grid-column-3 grid-column-large-6 grid-flex-mobile grid-column-middle-6 grid-column-small-12 grid-left', 'class': 'catalog__category-name'})]
+urls = ['https://roscontrol.com' + i.a['href'] for i in soup.findAll(attrs={'class': 'grid-padding grid-column-3 grid-column-large-6 grid-flex-mobile grid-column-middle-6 grid-column-small-12 grid-left'})]
+
+name_subcategories_list = []
+names_subcategories = []
+category = []
+sub_urls = []
+names = [] 
+ratings = []
+page_item_urls = []
+sum_ratings= []
+secur = []
+natur = []
+nutrit_value = []
+quality = []
+r = 0
+for r, i in enumerate(urls):
+  r += 1
+  response_url = requests.get(i,headers= Headers(headers=True).generate()).text
+  soup_url = bs(response_url,'lxml')
+  name_subcategory_list =  [i.text for i in soup_url.findAll(attrs={'class': 'grid-padding grid-column-3 grid-column-large-6 grid-flex-mobile grid-column-middle-6 grid-column-small-12 grid-left', 'class': 'catalog__category-name'})]
+  name_subcategories_list.append(name_subcategory_list)
+  sub_url = ['https://roscontrol.com' + i.a['href'] for i in soup_url.findAll(attrs={'class': 'grid-padding grid-column-3 grid-column-large-6 grid-flex-mobile grid-column-middle-6 grid-column-small-12 grid-left'})]
+
+  sub_urls.append(sub_url)
+  
+  for index_sub_categories, m in enumerate(sub_url):
+    response_name_url = requests.get(m,headers= Headers(headers=True).generate()).text
+    soup_name = bs(response_name_url,'lxml')
+    pagination = [",".join(i.text.split()) for i in soup_name.find_all(attrs={'class': 'page-pagination'})]
+    print(pagination, m)
+
+    name_subcategories = soup_name.find(class_ = 'main-title util-inline-block main-title-with-social').text.rstrip('- рейтинг')
+    name_category = soup_name.findAll(attrs={'itemprop': 'itemListElement', 'itemprop': 'name'})[1].text
+    if pagination == []:
+        name = [i.text for i in soup_name.findAll(attrs={'class': 'wrap-product-catalog__item grid-padding grid-column-4 grid-column-large-6 grid-column-middle-12 grid-column-small-12 grid-left js-product__item', 'class':'product__item-link'})]
+        print(len(name),name)  
+        names.append(name)
+
+        items_urls = ['https://roscontrol.com' + i.a['href'] for i in soup_name.findAll(attrs={
+            'class': 'wrap-product-catalog__item grid-padding grid-column-4 grid-column-large-6 grid-column-middle-12 grid-column-small-12 grid-left js-product__item'})]
+
+        page_item_urls.append(items_urls)
+
+        wrap_containers = soup_name.findAll(attrs= {'class': 'wrap-product-catalog__item grid-padding grid-column-4 grid-column-large-6 grid-column-middle-12 grid-column-small-12 grid-left js-product__item'})
+        for conteiner in wrap_containers:
+            s, na, nu, q = 0, 0, 0, 0  
+            name_ratings = [i.text.rstrip().lstrip() for i in conteiner.findAll('div', {'class': 'left'})]
+            value_ratings = [i.text for i in conteiner.findAll('div', {'class': 'right'})]
+            sum_rating = conteiner.find(class_ = re.compile('^rate'))
+            if sum_rating is None or sum_rating == '':
+              sum_rating = 'не проверен'
+            else:
+              sum_rating = sum_rating.text.strip()
+            sum_ratings.append(sum_rating)
+
+            while len(name_ratings) < 4 and len(value_ratings) < 4:
+                name_ratings.append('не указано')
+                value_ratings.append('не указано')
+
+            loc(name_ratings, value_ratings, s, na, nu, q)
+            names_subcategories.append(name_subcategories_list[0][index_sub_categories])
+            category.append(name_category)
+
+    if pagination != []:
+         pagination = pagination[0].split(',')
+         pop = pagination[:-2] 
+         for page in pop:
+              response_name_url = requests.get(m + f'?page={page}',headers= Headers(headers=True).generate()).text
+              soup_name_page = bs(response_name_url,'lxml')
+              name = [i.text for i in soup_name_page.findAll(attrs={'class': 'wrap-product-catalog__item grid-padding grid-column-4 grid-column-large-6 grid-column-middle-12 grid-column-small-12 grid-left js-product__item', 'class':'product__item-link'})]
+              
+              names.append(name)
+
+              items_urls= ['https://roscontrol.com' + i.a['href'] for i in soup_name_page.findAll(attrs={'class': 'wrap-product-catalog__item grid-padding grid-column-4 grid-column-large-6 grid-column-middle-12 grid-column-small-12 grid-left js-product__item'})]
+
+              page_item_urls.append(items_urls)
+
+              wrap_containers = soup_name_page.findAll('div', {'class':'wrap-product-catalog__item grid-padding grid-column-4 grid-column-large-6 grid-column-middle-12 grid-column-small-12 grid-left js-product__item'})
+              for conteiner in wrap_containers:
+                  s, na, nu, q = 0, 0, 0, 0
+                  name_ratings = [i.text.rstrip().lstrip() for i in conteiner.findAll('div', {'class': 'left'})]
+                  value_ratings = [i.text for i in conteiner.findAll('div', {'class': 'right'})]
+                  sum_rating = conteiner.find(class_ = re.compile('^rate'))
+                  if sum_rating is None or sum_rating == '':
+                    sum_rating = 'не проверен'
+                  else:
+                    sum_rating = sum_rating.text.strip()
+                  sum_ratings.append(sum_rating)
+                  # print(sum_ratings)
+                  while len(name_ratings) < 4 and len(value_ratings) < 4:
+                      name_ratings.insert(len(name_ratings), 'не указано')
+                      value_ratings.insert(len(value_ratings), 'не указано')
+
+                  loc(name_ratings, value_ratings, s, na, nu, q)
+                  names_subcategories.append(name_subcategories_list[0][index_sub_categories])
+                  category.append(name_category)
+
+
+  # if r > 0:
+  #     break
+names2 = []
+for i in names:
+    for j in i:
+        names2.append(j)
+page_item_urls2 = []
+for i in page_item_urls:
+    for j in i:
+        page_item_urls2.append(j)
+
+print (len(name_subcategories_list[0]),name_subcategories_list[0])
+print (len(names2), len(category), len(names_subcategories), len(secur), len(natur), len(nutrit_value), len(quality), len(page_item_urls2))
+
+dict = {'Наименование товара': names2, 'Категория': category, 'подкатегория': names_subcategories, 'Общий рейтинг': sum_ratings, 'Безопасность': secur, 'Натуральность': natur, 'Пищевая ценность': nutrit_value, 'Качество': quality, 'ссылка': page_item_urls2}
+pd.DataFrame(dict).to_csv('data.csv')

@@ -1,0 +1,28 @@
+from pymongo import MongoClient
+import pandas as pd
+import json
+
+
+client = MongoClient('localhost', 27017)
+db = client['Products']
+collection = db['collection']
+data = pd.read_csv('data.csv')
+data = data.rename(columns={'Unnamed: 0':'index'})
+record = json.loads(data.T.to_json()).values()
+
+def insert_db():
+    collection.insert_many(record)
+
+def find_db(a):
+    f = collection.find({'Общий рейтинг': {'$gte': int(a)}})
+    for i in f:
+        print(i)
+
+a = input('Введите требуемыю Общий рейтинг - ')
+find_db(a)
+
+def add_new():
+    for i in record:
+        if collection.find_one({'index': i['index']}) is None:
+            collection.insert_one(i)
+add_new()

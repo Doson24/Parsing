@@ -10,8 +10,8 @@ from selenium.webdriver.support import expected_conditions as EC
 
 url = 'https://mail.ru'
 # url = 'https://e.mail.ru/inbox/'
-login = 'karbushev-1991'
-password = 'K790399100'
+login = ''
+password = ''
 
 
 class Mail():
